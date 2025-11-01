@@ -22,6 +22,7 @@ library(tidyverse)
 library(here)
 library(ggplot2)
 library(knitr) # Pour créer de jolis tableaux
+library(patchwork) 
 ```
 
 ## 1. Introduction
@@ -40,13 +41,73 @@ Un objectif secondaire est de modéliser et de prévoir la volatilité (le risqu
 
 L'approche de ce projet, comparant les méthodes classiques aux modèles d'apprentissage profond (comme le LSTM), s'inspire de l'analyse documentaire de Fazel Mojtahedi et al. (2025), qui souligne la capacité de l'apprentissage profond à gérer les données non linéaires complexes que l'on trouve dans les séries temporelles volatiles.
 
-## 2. Méthodologie
+------------------------------------------------------------------------
 
-### 2.1 Acquisition et préparation des données
+## 2. Analyse Exploratoire (EDA)
+
+[cite_start]Conformément au brief[cite: 11], une analyse exploratoire a été menée pour comprendre la structure de la série temporelle avant la modélisation.
+
+### 2.1 Visualisation et Décomposition 
+
+Nous avons d'abord décomposé la série de prix de clôture en utilisant une décomposition STL (Seasonal-Trend-Loess) pour identifier ses composantes.
+
+```{r eda_decomposition, echo=FALSE, fig.cap="Graphique 5 : Décomposition STL du prix de clôture du BTC-USD."}
+# Charger les données complètes
+btc_features <- readRDS(here::here("data", "processed", "btc_features.rds"))
+
+# Créer un objet 'ts' (time series) pour la décomposition
+# Fréquence = 365.25 pour des données quotidiennes avec une saisonnalité annuelle
+btc_ts <- ts(btc_features$close, start = c(2018, 1), frequency = 365.25)
+
+# Effectuer la décomposition STL
+stl_result <- stl(btc_ts, s.window = "periodic", robust = TRUE)
+
+# Afficher le graphique (nécessite 'library(forecast)' ou 'library(fpp3)')
+forecast::autoplot(stl_result) +
+  labs(title = "Décomposition de la série temporelle du BTC-USD")
+```
+
+**Interprétation** : Le graphique de décomposition montre que la série est presque entièrement dominée par sa composante Tendance (trend). La composante Saisonnière (seasonal) est extrêmement faible, indiquant l'absence de cycle annuel prévisible fort. La composante **Résiduelle (remainder)** est très élevée, ce qui confirme la nature très volatile et "bruyante" de l'actif (présence d'anomalies).
+
+### 2.2 Détection des valeurs aberrantes
+
+Pour examiner les anomalies, nous avons tracé un boxplot des retours logarithmiques (qui sont supposés être stationnaires).
+
+```{r eda_boxplot, echo=FALSE, fig.cap="Graphique 6 : Boxplot des retours logarithmiques quotidiens."}
+ggplot(btc_features, aes(y = log_returns)) +
+  geom_boxplot() +
+  labs(title = "Détection des valeurs aberrantes dans les retours logarithmiques",
+       x = "BTC-USD",
+       y = "Retours Logarithmiques") +
+  theme_minimal()
+```
+**Interprétation** : Le boxplot confirme la présence de nombreuses valeurs aberrantes (outliers). Cela est caractéristique des données financières ("fat tails" ou leptokurtique). Cela justifie l'utilisation d'un modèle GARCH avec une distribution Student-t (comme nous l'avons fait) pour mieux modéliser ces chocs extrêmes.
+
+### 2.3 Analyse ACF et PACF
+Nous avons tracé les graphiques ACF et PACF sur les retours logarithmiques stationnaires pour identifier les dépendances temporelles.
+
+```{r eda_acf_pacf, echo=FALSE, fig.cap="Graphique 7 : ACF et PACF des retours logarithmiques."}
+# Graphiques ACF/PACF (utilisant la bibliothèque 'forecast' pour ggAcf/ggPacf)
+p1 <- forecast::ggAcf(btc_features$log_returns, lag.max = 50) + 
+  labs(title = "Autocorrelation Function (ACF) des Retours Log")
+
+p2 <- forecast::ggPacf(btc_features$log_returns, lag.max = 50) + 
+  labs(title = "Partial Autocorrelation (PACF) des Retours Log")
+
+# Combiner les graphiques (nécessite 'library(patchwork)')
+p1 / p2
+```
+
+**Interprétation** : Les graphiques ACF et PACF montrent tous deux des pics significatifs à des retards (lags) courts. Cela indique la présence d'autocorrélation (effets de "mémoire" à court terme) dans les retours. Cela suggère qu'un modèle de type ARMA ou GARCH est approprié. Fait intéressant, notre modèle auto.arima final a choisi un ARIMA(0,0,0), suggérant que nos variables exogènes (RSI, SMA, etc.) ont mieux capturé cette dépendance que les retards de la série elle-même.
+
+
+## 3. Méthodologie
+
+### 3.1 Acquisition et préparation des données
 
 Les données quotidiennes du BTC-USD ont été téléchargées via l'API de Yahoo Finance (`quantmod`) pour la période allant du 1er janvier 2018 à aujourd'hui. Les données brutes ont ensuite été enrichies par ingénierie de caractéristiques (`feature engineering`).
 
-### 2.2 Ingénierie des caractéristiques (Feature Engineering)
+### 3.2 Ingénierie des caractéristiques (Feature Engineering)
 
 Pour fournir un contexte aux modèles, les caractéristiques suivantes ont été créées :
 
@@ -62,7 +123,7 @@ Pour fournir un contexte aux modèles, les caractéristiques suivantes ont été
 
 -   **Caractéristique de volatilité :** La volatilité ajustée (sigma) d'un modèle **GARCH(1,1)** entraîné sur les retours logarithmiques a été utilisée comme prédicteur de risque.
 
-### 2.3 Modèles testés
+### 3.3 Modèles testés
 
 La comparaison a inclus cinq types de modèles :
 
@@ -76,13 +137,13 @@ La comparaison a inclus cinq types de modèles :
 
 5.  **Hybrid (ARIMA-LSTM) :** Un modèle LSTM entraîné pour prédire les "erreurs" (résidus) du modèle ARIMAX.
 
-### 2.4 Évaluation
+### 3.4 Évaluation
 
 Les données ont été divisées en un ensemble d'entraînement (80 %) et un ensemble de test (20 %). La performance des modèles a été mesurée en utilisant la **RMSE** (Root Mean Squared Error) et la **MAE** (Mean Absolute Error) sur l'ensemble de test.
 
-## 3. Résultats
+## 4. Résultats
 
-### 3.1 Performance des modèles
+### 4.1 Performance des modèles
 
 Le tableau suivant résume les performances de chaque modèle sur l'ensemble de test. Des valeurs de RMSE et de MAE plus faibles indiquent une meilleure performance.
 
@@ -97,7 +158,7 @@ knitr::kable(metrics_df,
              digits = 2)
 ```
 
-### 3.2 Visualisation des performances
+### 4.2 Visualisation des performances
 
 Le graphique à barres ci-dessous illustre clairement la différence de performance. Les modèles ARIMAX, Prophet et Hybrid affichent des erreurs faibles et comparables. Les modèles XGBoost et LSTM, tels qu'implémentés, ont des erreurs exponentiellement plus élevées.
 
@@ -106,7 +167,7 @@ Le graphique à barres ci-dessous illustre clairement la différence de performa
 knitr::include_graphics(here::here("output", "plots", "metrics_comparison_barchart.png"))
 ```
 
-### 3.3 Comparaison des prévisions
+### 4.3 Comparaison des prévisions
 
 Le graphique en facettes suivant montre les prévisions de chaque modèle (en couleur) superposées au prix réel (en noir). Cela permet de voir *comment* chaque modèle s'est comporté.
 
@@ -119,7 +180,7 @@ Le graphique en facettes suivant montre les prévisions de chaque modèle (en co
 knitr::include_graphics(here::here("output", "plots", "price_forecast_faceted.png"))
 ```
 
-### 3.4 Analyse des résidus (Erreurs)
+### 4.4 Analyse des résidus (Erreurs)
 
 Ce graphique de diagnostic montre les erreurs de chaque modèle dans le temps. Un bon modèle doit avoir des erreurs petites et aléatoires, centrées autour de zéro.
 
@@ -132,22 +193,20 @@ Ce graphique de diagnostic montre les erreurs de chaque modèle dans le temps. U
 knitr::include_graphics(here::here("output", "plots", "residuals_over_time.png"))
 ```
 
-### 3.5 Prévision de la volatilité (GARCH)
+### 4.5 Prévision de la volatilité (GARCH)
 
 Enfin, le modèle GARCH(1,1) a été utilisé pour modéliser le risque. Le graphique ci-dessous montre les retours logarithmiques réels (en gris) et la bande de volatilité prédite par le modèle (en rouge). Le modèle a correctement identifié les périodes de forte et de faible volatilité.
-
-
 
 ```{r garch_plot, echo=FALSE, fig.cap="Graphique 4 : Prévision de la volatilité du GARCH (bandes rouges) vs Retours réels (gris)."}
 # Afficher le graphique GARCH sauvegardé
 knitr::include_graphics(here::here("output", "plots", "garch_volatility_forecast.png")) 
 ```
 
-## 4. Discussion et Analyse
+## 5. Discussion et Analyse
 
 Les résultats sont extrêmement clairs et fournissent deux enseignements majeurs.
 
-### 4.1 Leçon 1 : L'ingénierie des caractéristiques a battu la complexité du modèle
+### 5.1 Leçon 1 : L'ingénierie des caractéristiques a battu la complexité du modèle
 
 Le modèle gagnant est l'**ARIMAX**, avec le **Prophet** en deuxième position.
 
@@ -155,7 +214,7 @@ L'aspect le plus révélateur est que le modèle ARIMAX sélectionné était un 
 
 **Conclusion :** Le succès de la prévision ne venait pas d'un modèle temporel complexe, mais de la **puissance prédictive des caractéristiques** que nous avons créées (RSI, SMAs, MACD, volume).
 
-### 4.2 Leçon 2 : L'échec des "boîtes noires" (Black Box)
+### 5.2 Leçon 2 : L'échec des "boîtes noires" (Black Box)
 
 Les modèles les plus complexes, **XGBoost** et **LSTM**, ont échoué de manière spectaculaire.
 
@@ -163,7 +222,7 @@ Les modèles les plus complexes, **XGBoost** et **LSTM**, ont échoué de maniè
 
 -   **Échec du LSTM :** Bien que nous ayons mis à l'échelle les données pour le LSTM, il a quand même échoué. Cela démontre une vérité importante : les modèles d'apprentissage profond ne sont pas magiques. Ils nécessitent un réglage méticuleux (tuning) des hyperparamètres (nombre de couches, neurones, taux d'apprentissage, etc.). Un LSTM non réglé est souvent moins performant qu'un modèle classique bien pensé.
 
-## 5. Conclusion
+## 6. Conclusion
 
 Ce projet a réussi à identifier une méthode robuste pour prévoir le prix du BTC-USD.
 
@@ -171,6 +230,6 @@ L'enseignement principal est que **l'ingénierie des caractéristiques et la com
 
 Pour des travaux futurs, l'étape évidente serait de (1) mettre à l'échelle les données pour le XGBoost (par ex. `log(volume)`) et (2) d'entreprendre un réglage approfondi des hyperparamètres pour le LSTM afin de voir s'il peut alors surpasser le modèle ARIMAX.
 
-## 6. Références
+## 7. Références
 
 Fazel Mojtahedi, F., Yousefpour, N., Chow, S. H., & Cassidy, M. (2025). Deep learning for time series forecasting: Review and applications in geotechnics and geosciences. *Archives of Computational Methods in Engineering*. <https://doi.org/10.1007/s11831-025-10244-5>
