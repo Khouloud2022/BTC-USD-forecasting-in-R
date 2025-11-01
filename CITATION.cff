@@ -1,0 +1,46 @@
+# This is the "Citation File Format" version. 1.2.0 is the current standard.
+cff-version: 1.2.0
+
+# This is the message that appears at the top.
+message: "If you use this software, please cite it as below."
+
+# --- Required Fields ---
+title: "BTC-USD Price & Volatility Forecasting in R"
+
+# List all authors
+authors:
+  - family-names: "Ouni"
+    given-names: "Khouloud"
+    # Optional but highly recommended: your ORCID iD
+    orcid: "https://orcid.org/0009-0008-6921-0387"
+
+# --- Recommended Fields ---
+# The version of your project
+version: "1.0.0"
+
+# The date you are releasing this version
+date-released: "2025-11-01"
+
+# A short description of your project
+abstract: "A comprehensive analysis and comparison of classical, machine learning, and deep learning models for forecasting the price and volatility of BTC-USD."
+
+# Add keywords to make it discoverable
+keywords:
+  - "time series"
+  - "forecasting"
+  - "R"
+  - "BTC"
+  - "LSTM"
+  - "GARCH"
+  - "Prophet"
+
+# The license for your project (matches your LICENSE file)
+license: "MIT"
+
+# The URL to your GitHub repository
+repository-code: "https://github.com/Khouloud2022/BTC-USD-forecasting-in-R"
+
+# Optional: If you have a DOI (e.g., from Zenodo)
+# identifiers:
+#   - type: doi
+#     value: 10.5281/zenodo.123456
