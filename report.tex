@@ -1,0 +1,350 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Analyse et prévision du prix et de la volatilité du BTC-USD},
+  pdfauthor={khouloud Ouni},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Analyse et prévision du prix et de la volatilité du BTC-USD}
+\author{khouloud Ouni}
+\date{2025-11-01}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\subsection{1. Introduction}\label{introduction}
+
+\subsubsection{1.1 Contexte du projet}\label{contexte-du-projet}
+
+Le Bitcoin (BTC-USD) est un actif financier notoirement volatil, ce qui
+en fait un sujet d'étude complexe mais fascinant pour la prévision de
+séries temporelles. Les méthodes de prévision traditionnelles peinent
+souvent à capturer ses dynamiques non linéaires, tandis que les modèles
+d'apprentissage automatique et d'apprentissage profond plus récents
+offrent de nouvelles possibilités.
+
+\subsubsection{1.2 Objectif}\label{objectif}
+
+L'objectif de ce projet est de comparer de manière exhaustive une suite
+de modèles de prévision pour déterminer la méthode la plus précise pour
+prédire le prix de clôture quotidien du BTC-USD. Nous comparons des
+modèles économétriques classiques (ARIMAX), des modèles automatisés
+(Prophet) et des modèles d'apprentissage automatique (XGBoost, LSTM).
+
+Un objectif secondaire est de modéliser et de prévoir la volatilité (le
+risque) en utilisant un modèle GARCH, qui sert également de
+caractéristique d'entrée pour les modèles d'apprentissage automatique.
+
+\subsubsection{1.3 Référence
+académique}\label{ruxe9fuxe9rence-acaduxe9mique}
+
+L'approche de ce projet, comparant les méthodes classiques aux modèles
+d'apprentissage profond (comme le LSTM), s'inspire de l'analyse
+documentaire de Fazel Mojtahedi et al.~(2025), qui souligne la capacité
+de l'apprentissage profond à gérer les données non linéaires complexes
+que l'on trouve dans les séries temporelles volatiles.
+
+\subsection{2. Méthodologie}\label{muxe9thodologie}
+
+\subsubsection{2.1 Acquisition et préparation des
+données}\label{acquisition-et-pruxe9paration-des-donnuxe9es}
+
+Les données quotidiennes du BTC-USD ont été téléchargées via l'API de
+Yahoo Finance (\texttt{quantmod}) pour la période allant du 1er janvier
+2018 à aujourd'hui. Les données brutes ont ensuite été enrichies par
+ingénierie de caractéristiques (\texttt{feature\ engineering}).
+
+\subsubsection{2.2 Ingénierie des caractéristiques (Feature
+Engineering)}\label{inguxe9nierie-des-caractuxe9ristiques-feature-engineering}
+
+Pour fournir un contexte aux modèles, les caractéristiques suivantes ont
+été créées :
+
+\begin{itemize}
+\item
+  \textbf{Retours Logarithmiques :} \texttt{log(close\ /\ lag(close))}
+\item
+  \textbf{Indicateurs techniques (via \texttt{TTR}) :}
+
+  \begin{itemize}
+  \item
+    RSI (Relative Strength Index) sur 14 jours
+  \item
+    SMA (Simple Moving Average) sur 20 et 50 jours
+  \item
+    MACD (Moving Average Convergence Divergence)
+  \end{itemize}
+\item
+  \textbf{Caractéristique de volatilité :} La volatilité ajustée (sigma)
+  d'un modèle \textbf{GARCH(1,1)} entraîné sur les retours
+  logarithmiques a été utilisée comme prédicteur de risque.
+\end{itemize}
+
+\subsubsection{2.3 Modèles testés}\label{moduxe8les-testuxe9s}
+
+La comparaison a inclus cinq types de modèles :
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{ARIMAX :} Un modèle \texttt{auto.arima()} utilisant les
+  caractéristiques techniques comme régresseurs externes (xreg).
+\item
+  \textbf{Prophet :} Le modèle de prévision de Facebook, également
+  alimenté par les mêmes caractéristiques comme régresseurs.
+\item
+  \textbf{XGBoost :} Un modèle d'apprentissage automatique (Gradient
+  Boosting) utilisant toutes les caractéristiques, y compris la
+  volatilité GARCH.
+\item
+  \textbf{LSTM (Scaled) :} Un réseau de neurones récurrent (Long
+  Short-Term Memory) entraîné sur les données normalisées pour gérer les
+  dépendances à long terme.
+\item
+  \textbf{Hybrid (ARIMA-LSTM) :} Un modèle LSTM entraîné pour prédire
+  les ``erreurs'' (résidus) du modèle ARIMAX.
+\end{enumerate}
+
+\subsubsection{2.4 Évaluation}\label{uxe9valuation}
+
+Les données ont été divisées en un ensemble d'entraînement (80 \%) et un
+ensemble de test (20 \%). La performance des modèles a été mesurée en
+utilisant la \textbf{RMSE} (Root Mean Squared Error) et la \textbf{MAE}
+(Mean Absolute Error) sur l'ensemble de test.
+
+\subsection{3. Résultats}\label{ruxe9sultats}
+
+\subsubsection{3.1 Performance des
+modèles}\label{performance-des-moduxe8les}
+
+Le tableau suivant résume les performances de chaque modèle sur
+l'ensemble de test. Des valeurs de RMSE et de MAE plus faibles indiquent
+une meilleure performance.
+
+\begin{longtable}[]{@{}lrr@{}}
+\caption{Tableau 1 : Métriques de performance des modèles (sur
+l'ensemble de test)}\tabularnewline
+\toprule\noalign{}
+Modèle & RMSE (Erreur \$) & MAE (Erreur \$) \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Modèle & RMSE (Erreur \$) & MAE (Erreur \$) \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+ARIMAX & 3077.52 & 2395.36 \\
+Prophet & 3240.63 & 2488.98 \\
+XGBoost (with GARCH) & 30002.55 & 23606.90 \\
+LSTM (Scaled) & 24699.67 & 20402.04 \\
+Hybrid (ARIMA-LSTM) & 3244.40 & 2522.58 \\
+\end{longtable}
+
+\subsubsection{3.2 Visualisation des
+performances}\label{visualisation-des-performances}
+
+Le graphique à barres ci-dessous illustre clairement la différence de
+performance. Les modèles ARIMAX, Prophet et Hybrid affichent des erreurs
+faibles et comparables. Les modèles XGBoost et LSTM, tels
+qu'implémentés, ont des erreurs exponentiellement plus élevées.
+
+\begin{figure}
+\includegraphics[width=50in]{output/plots/metrics_comparison_barchart} \caption{Graphique 1 : Comparaison des métriques d'erreur. Une barre plus courte est meilleure.}\label{fig:metrics_plot}
+\end{figure}
+
+\subsubsection{3.3 Comparaison des
+prévisions}\label{comparaison-des-pruxe9visions}
+
+Le graphique en facettes suivant montre les prévisions de chaque modèle
+(en couleur) superposées au prix réel (en noir). Cela permet de voir
+\emph{comment} chaque modèle s'est comporté.
+
+\begin{itemize}
+\item
+  Les graphiques \textbf{ARIMAX} et \textbf{Prophet} montrent que les
+  prévisions suivent de près le prix réel.
+\item
+  Les graphiques \textbf{XGBoost} et \textbf{LSTM} montrent des
+  prévisions qui échouent manifestement à capturer la dynamique des
+  prix, avec des échelles d'erreur très différentes.
+\end{itemize}
+
+\begin{figure}
+\includegraphics[width=50in]{output/plots/price_forecast_faceted} \caption{Graphique 2 : Prévisions (couleur) vs Réalité (noir) pour chaque modèle.}\label{fig:faceted_plot}
+\end{figure}
+
+\subsubsection{3.4 Analyse des résidus
+(Erreurs)}\label{analyse-des-ruxe9sidus-erreurs}
+
+Ce graphique de diagnostic montre les erreurs de chaque modèle dans le
+temps. Un bon modèle doit avoir des erreurs petites et aléatoires,
+centrées autour de zéro.
+
+\begin{itemize}
+\item
+  \textbf{ARIMAX, Prophet et Hybrid} montrent des erreurs contenues,
+  bien qu'elles augmentent pendant les périodes de forte volatilité.
+\item
+  \textbf{XGBoost et LSTM} présentent des erreurs massives et
+  systématiques, confirmant leur échec.
+\end{itemize}
+
+\begin{figure}
+\includegraphics[width=50in]{output/plots/residuals_over_time} \caption{Graphique 3 : Erreurs du modèle (Résidus) au fil du temps.}\label{fig:residuals_plot}
+\end{figure}
+
+\subsubsection{3.5 Prévision de la volatilité
+(GARCH)}\label{pruxe9vision-de-la-volatilituxe9-garch}
+
+Enfin, le modèle GARCH(1,1) a été utilisé pour modéliser le risque. Le
+graphique ci-dessous montre les retours logarithmiques réels (en gris)
+et la bande de volatilité prédite par le modèle (en rouge). Le modèle a
+correctement identifié les périodes de forte et de faible volatilité.
+
+\begin{figure}
+\includegraphics[width=50in]{output/plots/garch_volatility_forecast} \caption{Graphique 4 : Prévision de la volatilité du GARCH (bandes rouges) vs Retours réels (gris).}\label{fig:garch_plot}
+\end{figure}
+
+\subsection{4. Discussion et Analyse}\label{discussion-et-analyse}
+
+Les résultats sont extrêmement clairs et fournissent deux enseignements
+majeurs.
+
+\subsubsection{4.1 Leçon 1 : L'ingénierie des caractéristiques a battu
+la complexité du
+modèle}\label{leuxe7on-1-linguxe9nierie-des-caractuxe9ristiques-a-battu-la-complexituxe9-du-moduxe8le}
+
+Le modèle gagnant est l'\textbf{ARIMAX}, avec le \textbf{Prophet} en
+deuxième position.
+
+L'aspect le plus révélateur est que le modèle ARIMAX sélectionné était
+un \texttt{ARIMA(0,0,0)\ avec\ erreurs}. Cela signifie que le modèle a
+complètement ignoré les composantes de séries temporelles (AR, I, MA) et
+a fonctionné comme un pur \textbf{modèle de régression multivariée}.
+
+\textbf{Conclusion :} Le succès de la prévision ne venait pas d'un
+modèle temporel complexe, mais de la \textbf{puissance prédictive des
+caractéristiques} que nous avons créées (RSI, SMAs, MACD, volume).
+
+\subsubsection{4.2 Leçon 2 : L'échec des ``boîtes noires'' (Black
+Box)}\label{leuxe7on-2-luxe9chec-des-bouxeetes-noires-black-box}
+
+Les modèles les plus complexes, \textbf{XGBoost} et \textbf{LSTM}, ont
+échoué de manière spectaculaire.
+
+\begin{itemize}
+\item
+  \textbf{Échec du XGBoost :} La raison est une erreur classique de
+  préparation des données. Nous n'avons pas mis à l'échelle (scale) les
+  caractéristiques pour XGBoost. Le modèle a vu la caractéristique
+  \texttt{volume} (un nombre à 10 chiffres) comme étant des milliards de
+  fois plus importante que le \texttt{RSI} (un nombre à 2 chiffres) ou
+  la \texttt{volatilité} (ex: 0.04), et a donc ignoré ces prédicteurs
+  cruciaux.
+\item
+  \textbf{Échec du LSTM :} Bien que nous ayons mis à l'échelle les
+  données pour le LSTM, il a quand même échoué. Cela démontre une vérité
+  importante : les modèles d'apprentissage profond ne sont pas magiques.
+  Ils nécessitent un réglage méticuleux (tuning) des hyperparamètres
+  (nombre de couches, neurones, taux d'apprentissage, etc.). Un LSTM non
+  réglé est souvent moins performant qu'un modèle classique bien pensé.
+\end{itemize}
+
+\subsection{5. Conclusion}\label{conclusion}
+
+Ce projet a réussi à identifier une méthode robuste pour prévoir le prix
+du BTC-USD.
+
+L'enseignement principal est que \textbf{l'ingénierie des
+caractéristiques et la compréhension du modèle l'emportent sur la simple
+complexité du modèle}. Un modèle ARIMAX bien alimenté en
+caractéristiques pertinentes a surpassé des modèles d'apprentissage
+profond complexes mais non réglés.
+
+Pour des travaux futurs, l'étape évidente serait de (1) mettre à
+l'échelle les données pour le XGBoost (par ex. \texttt{log(volume)}) et
+(2) d'entreprendre un réglage approfondi des hyperparamètres pour le
+LSTM afin de voir s'il peut alors surpasser le modèle ARIMAX.
+
+\subsection{6. Références}\label{ruxe9fuxe9rences}
+
+Fazel Mojtahedi, F., Yousefpour, N., Chow, S. H., \& Cassidy, M. (2025).
+Deep learning for time series forecasting: Review and applications in
+geotechnics and geosciences. \emph{Archives of Computational Methods in
+Engineering}. \url{https://doi.org/10.1007/s11831-025-10244-5}
+
+\end{document}

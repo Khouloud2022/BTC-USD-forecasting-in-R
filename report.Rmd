@@ -1,0 +1,176 @@
+---
+title: "Analyse et prévision du prix et de la volatilité du BTC-USD"
+author: "khouloud Ouni"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    code_folding: hide
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+# Ce bloc configure le rapport.
+# echo=FALSE signifie que le code ne sera pas affiché dans le rapport final.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Charger les bibliothèques nécessaires pour afficher les résultats
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(knitr) # Pour créer de jolis tableaux
+```
+
+## 1. Introduction
+
+### 1.1 Contexte du projet
+
+Le Bitcoin (BTC-USD) est un actif financier notoirement volatil, ce qui en fait un sujet d'étude complexe mais fascinant pour la prévision de séries temporelles. Les méthodes de prévision traditionnelles peinent souvent à capturer ses dynamiques non linéaires, tandis que les modèles d'apprentissage automatique et d'apprentissage profond plus récents offrent de nouvelles possibilités.
+
+### 1.2 Objectif
+
+L'objectif de ce projet est de comparer de manière exhaustive une suite de modèles de prévision pour déterminer la méthode la plus précise pour prédire le prix de clôture quotidien du BTC-USD. Nous comparons des modèles économétriques classiques (ARIMAX), des modèles automatisés (Prophet) et des modèles d'apprentissage automatique (XGBoost, LSTM).
+
+Un objectif secondaire est de modéliser et de prévoir la volatilité (le risque) en utilisant un modèle GARCH, qui sert également de caractéristique d'entrée pour les modèles d'apprentissage automatique.
+
+### 1.3 Référence académique
+
+L'approche de ce projet, comparant les méthodes classiques aux modèles d'apprentissage profond (comme le LSTM), s'inspire de l'analyse documentaire de Fazel Mojtahedi et al. (2025), qui souligne la capacité de l'apprentissage profond à gérer les données non linéaires complexes que l'on trouve dans les séries temporelles volatiles.
+
+## 2. Méthodologie
+
+### 2.1 Acquisition et préparation des données
+
+Les données quotidiennes du BTC-USD ont été téléchargées via l'API de Yahoo Finance (`quantmod`) pour la période allant du 1er janvier 2018 à aujourd'hui. Les données brutes ont ensuite été enrichies par ingénierie de caractéristiques (`feature engineering`).
+
+### 2.2 Ingénierie des caractéristiques (Feature Engineering)
+
+Pour fournir un contexte aux modèles, les caractéristiques suivantes ont été créées :
+
+-   **Retours Logarithmiques :** `log(close / lag(close))`
+
+-   **Indicateurs techniques (via `TTR`) :**
+
+    -   RSI (Relative Strength Index) sur 14 jours
+
+    -   SMA (Simple Moving Average) sur 20 et 50 jours
+
+    -   MACD (Moving Average Convergence Divergence)
+
+-   **Caractéristique de volatilité :** La volatilité ajustée (sigma) d'un modèle **GARCH(1,1)** entraîné sur les retours logarithmiques a été utilisée comme prédicteur de risque.
+
+### 2.3 Modèles testés
+
+La comparaison a inclus cinq types de modèles :
+
+1.  **ARIMAX :** Un modèle `auto.arima()` utilisant les caractéristiques techniques comme régresseurs externes (xreg).
+
+2.  **Prophet :** Le modèle de prévision de Facebook, également alimenté par les mêmes caractéristiques comme régresseurs.
+
+3.  **XGBoost :** Un modèle d'apprentissage automatique (Gradient Boosting) utilisant toutes les caractéristiques, y compris la volatilité GARCH.
+
+4.  **LSTM (Scaled) :** Un réseau de neurones récurrent (Long Short-Term Memory) entraîné sur les données normalisées pour gérer les dépendances à long terme.
+
+5.  **Hybrid (ARIMA-LSTM) :** Un modèle LSTM entraîné pour prédire les "erreurs" (résidus) du modèle ARIMAX.
+
+### 2.4 Évaluation
+
+Les données ont été divisées en un ensemble d'entraînement (80 %) et un ensemble de test (20 %). La performance des modèles a été mesurée en utilisant la **RMSE** (Root Mean Squared Error) et la **MAE** (Mean Absolute Error) sur l'ensemble de test.
+
+## 3. Résultats
+
+### 3.1 Performance des modèles
+
+Le tableau suivant résume les performances de chaque modèle sur l'ensemble de test. Des valeurs de RMSE et de MAE plus faibles indiquent une meilleure performance.
+
+```{r metrics_table, echo=FALSE}
+# Charger le fichier CSV des métriques sauvegardé
+metrics_df <- read.csv(here::here("output", "model_metrics.csv"))
+
+# Afficher le tableau de manière professionnelle
+knitr::kable(metrics_df, 
+             caption = "Tableau 1 : Métriques de performance des modèles (sur l'ensemble de test)",
+             col.names = c("Modèle", "RMSE (Erreur $)", "MAE (Erreur $)"),
+             digits = 2)
+```
+
+### 3.2 Visualisation des performances
+
+Le graphique à barres ci-dessous illustre clairement la différence de performance. Les modèles ARIMAX, Prophet et Hybrid affichent des erreurs faibles et comparables. Les modèles XGBoost et LSTM, tels qu'implémentés, ont des erreurs exponentiellement plus élevées.
+
+```{r metrics_plot, echo=FALSE, fig.cap="Graphique 1 : Comparaison des métriques d'erreur. Une barre plus courte est meilleure."}
+# Afficher le graphique à barres sauvegardé
+knitr::include_graphics(here::here("output", "plots", "metrics_comparison_barchart.png"))
+```
+
+### 3.3 Comparaison des prévisions
+
+Le graphique en facettes suivant montre les prévisions de chaque modèle (en couleur) superposées au prix réel (en noir). Cela permet de voir *comment* chaque modèle s'est comporté.
+
+-   Les graphiques **ARIMAX** et **Prophet** montrent que les prévisions suivent de près le prix réel.
+
+-   Les graphiques **XGBoost** et **LSTM** montrent des prévisions qui échouent manifestement à capturer la dynamique des prix, avec des échelles d'erreur très différentes.
+
+```{r faceted_plot, echo=FALSE, fig.cap="Graphique 2 : Prévisions (couleur) vs Réalité (noir) pour chaque modèle."}
+# Afficher le graphique en facettes sauvegardé
+knitr::include_graphics(here::here("output", "plots", "price_forecast_faceted.png"))
+```
+
+### 3.4 Analyse des résidus (Erreurs)
+
+Ce graphique de diagnostic montre les erreurs de chaque modèle dans le temps. Un bon modèle doit avoir des erreurs petites et aléatoires, centrées autour de zéro.
+
+-   **ARIMAX, Prophet et Hybrid** montrent des erreurs contenues, bien qu'elles augmentent pendant les périodes de forte volatilité.
+
+-   **XGBoost et LSTM** présentent des erreurs massives et systématiques, confirmant leur échec.
+
+```{r residuals_plot, echo=FALSE, fig.cap="Graphique 3 : Erreurs du modèle (Résidus) au fil du temps."}
+# Afficher le graphique des résidus sauvegardé
+knitr::include_graphics(here::here("output", "plots", "residuals_over_time.png"))
+```
+
+### 3.5 Prévision de la volatilité (GARCH)
+
+Enfin, le modèle GARCH(1,1) a été utilisé pour modéliser le risque. Le graphique ci-dessous montre les retours logarithmiques réels (en gris) et la bande de volatilité prédite par le modèle (en rouge). Le modèle a correctement identifié les périodes de forte et de faible volatilité.
+
+
+
+```{r garch_plot, echo=FALSE, fig.cap="Graphique 4 : Prévision de la volatilité du GARCH (bandes rouges) vs Retours réels (gris)."}
+# Afficher le graphique GARCH sauvegardé
+knitr::include_graphics(here::here("output", "plots", "garch_volatility_forecast.png")) 
+```
+
+## 4. Discussion et Analyse
+
+Les résultats sont extrêmement clairs et fournissent deux enseignements majeurs.
+
+### 4.1 Leçon 1 : L'ingénierie des caractéristiques a battu la complexité du modèle
+
+Le modèle gagnant est l'**ARIMAX**, avec le **Prophet** en deuxième position.
+
+L'aspect le plus révélateur est que le modèle ARIMAX sélectionné était un `ARIMA(0,0,0) avec erreurs`. Cela signifie que le modèle a complètement ignoré les composantes de séries temporelles (AR, I, MA) et a fonctionné comme un pur **modèle de régression multivariée**.
+
+**Conclusion :** Le succès de la prévision ne venait pas d'un modèle temporel complexe, mais de la **puissance prédictive des caractéristiques** que nous avons créées (RSI, SMAs, MACD, volume).
+
+### 4.2 Leçon 2 : L'échec des "boîtes noires" (Black Box)
+
+Les modèles les plus complexes, **XGBoost** et **LSTM**, ont échoué de manière spectaculaire.
+
+-   **Échec du XGBoost :** La raison est une erreur classique de préparation des données. Nous n'avons pas mis à l'échelle (scale) les caractéristiques pour XGBoost. Le modèle a vu la caractéristique `volume` (un nombre à 10 chiffres) comme étant des milliards de fois plus importante que le `RSI` (un nombre à 2 chiffres) ou la `volatilité` (ex: 0.04), et a donc ignoré ces prédicteurs cruciaux.
+
+-   **Échec du LSTM :** Bien que nous ayons mis à l'échelle les données pour le LSTM, il a quand même échoué. Cela démontre une vérité importante : les modèles d'apprentissage profond ne sont pas magiques. Ils nécessitent un réglage méticuleux (tuning) des hyperparamètres (nombre de couches, neurones, taux d'apprentissage, etc.). Un LSTM non réglé est souvent moins performant qu'un modèle classique bien pensé.
+
+## 5. Conclusion
+
+Ce projet a réussi à identifier une méthode robuste pour prévoir le prix du BTC-USD.
+
+L'enseignement principal est que **l'ingénierie des caractéristiques et la compréhension du modèle l'emportent sur la simple complexité du modèle**. Un modèle ARIMAX bien alimenté en caractéristiques pertinentes a surpassé des modèles d'apprentissage profond complexes mais non réglés.
+
+Pour des travaux futurs, l'étape évidente serait de (1) mettre à l'échelle les données pour le XGBoost (par ex. `log(volume)`) et (2) d'entreprendre un réglage approfondi des hyperparamètres pour le LSTM afin de voir s'il peut alors surpasser le modèle ARIMAX.
+
+## 6. Références
+
+Fazel Mojtahedi, F., Yousefpour, N., Chow, S. H., & Cassidy, M. (2025). Deep learning for time series forecasting: Review and applications in geotechnics and geosciences. *Archives of Computational Methods in Engineering*. <https://doi.org/10.1007/s11831-025-10244-5>
