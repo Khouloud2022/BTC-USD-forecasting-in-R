@@ -116,8 +116,6 @@ The models were benchmarked on a 20% test set. The results clearly show that the
 For a full analysis, please see the final compiled `report.html`.
 
 ---
-=======
->>>>>>> c21efcfadb8fcd18e3dcdac1ff4cea51152bf0db
 
 ## 📂 Project Structure
 
