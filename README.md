@@ -11,7 +11,7 @@ This repository contains a comprehensive analysis to forecast BTC-USD price and 
 
 The project emphasizes **reproducibility**. The R environment is managed by `renv`, while the deep learning models are built in Google Colab (Python/Keras) to bypass common installation issues.
 
-## 🚀 Key Findings (TL;DR)
+## 🚀 Key Findings 
 
 1.  **Winner: ARIMAX.** The most accurate model was the **ARIMAX** model (RMSE: 3077.52).
 2.  **Feature Engineering is King:** The winning model was an `ARIMA(0,0,0) with errors`, proving that the **external features** (RSI, SMAs, MACD, Volume) were far more predictive than the time series components alone.
