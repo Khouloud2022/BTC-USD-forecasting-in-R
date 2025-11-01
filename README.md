@@ -95,6 +95,7 @@ This project compares a wide range of time series models:
 4.  **Deep Learning:**
     * **LSTM:** Long Short-Term Memory, a recurrent neural network (RNN) designed to handle long-term dependencies in sequential data.
     * **Hybrid (ARIMA-LSTM):** A model that combines ARIMA's linear modeling with LSTM's ability to model non-linear errors.
+<<<<<<< HEAD
 
 ---
 
@@ -115,6 +116,8 @@ The models were benchmarked on a 20% test set. The results clearly show that the
 For a full analysis, please see the final compiled `report.html`.
 
 ---
+=======
+>>>>>>> c21efcfadb8fcd18e3dcdac1ff4cea51152bf0db
 
 ## 📂 Project Structure
 
