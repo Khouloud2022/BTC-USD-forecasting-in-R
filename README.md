@@ -37,7 +37,7 @@ This project compares a wide range of time series models:
     * **XGBoost:** A powerful gradient-boosting model using technical indicators and GARCH volatility as features.
 4.  **Deep Learning:**
     * **LSTM:** Long Short-Term Memory, a recurrent neural network (RNN) designed to handle long-term dependencies in sequential data.
-    * **Hybrid (ARIMA-LSTM):** [*Optional, if you build it*] A model that combines ARIMA's linear modeling with LSTM's ability to model non-linear errors.
+    * **Hybrid (ARIMA-LSTM):** A model that combines ARIMA's linear modeling with LSTM's ability to model non-linear errors.
 
 ## 📂 Project Structure
 
